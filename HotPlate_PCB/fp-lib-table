@@ -1,0 +1,8 @@
+(fp_lib_table
+  (lib (name GTL-Power)(type KiCad)(uri ${KIPRJMOD}/lib/GTL-Power.pretty)(options "")(descr ""))
+  (lib (name Fuseholder_single)(type KiCad)(uri ${KIPRJMOD}/lib/Fuseholder_single.pretty)(options "")(descr ""))
+  (lib (name kabelschuh)(type KiCad)(uri ${KIPRJMOD}/lib/kabelschuh.pretty)(options "")(descr ""))
+  (lib (name Elec_SM4532)(type KiCad)(uri ${KIPRJMOD}/lib/Elec_SM4532.pretty)(options "")(descr ""))
+  (lib (name potentiometer_midmount)(type KiCad)(uri ${KIPRJMOD}/lib/potentiometer_midmount.pretty)(options "")(descr ""))
+  (lib (name oled)(type KiCad)(uri ${KIPRJMOD}/lib/oled.pretty)(options "")(descr ""))
+)

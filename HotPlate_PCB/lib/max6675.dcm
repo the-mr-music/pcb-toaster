@@ -1,0 +1,9 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP MAX6675
+D Cold-Junction-Compensated K-Thermocouple to-Digital Converter
+K thermocouple spi converter digital
+F https://datasheet.lcsc.com/szlcsc/Maxim-Integrated-MAX6675ISA-T_C16030.pdf
+$ENDCMP
+#
+#End Doc Library

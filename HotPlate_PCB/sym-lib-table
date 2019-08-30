@@ -1,0 +1,5 @@
+(sym_lib_table
+  (lib (name max6675)(type Legacy)(uri ${KIPRJMOD}/lib/max6675.lib)(options "")(descr ""))
+  (lib (name GTL-Power)(type Legacy)(uri ${KIPRJMOD}/lib/GTL-Power.lib)(options "")(descr ""))
+  (lib (name oled)(type Legacy)(uri ${KIPRJMOD}/lib/oled.lib)(options "")(descr ""))
+)
