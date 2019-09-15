@@ -6,9 +6,10 @@
 
 extern SPI_HandleTypeDef hspi1;
 
-const uint16_t calibration = 800;
+//const uint16_t calibration = 800;
+const uint16_t calibration = 0;
 
-const uint8_t nAvg = 4; // Numbers of samples per average
+#define nAvg 4 // Numbers of samples per average
 
 volatile uint16_t cTemp;
 volatile uint16_t lastMeasurements[nAvg];
@@ -27,7 +28,7 @@ void tc_init() {
   }
 
   for (uint8_t i = 0; i < nAvg; i++)
-    lastMeasurements[nAvg] = cTemp;
+    lastMeasurements[i] = cTemp;
 
   mIndex = 0;
   return;
@@ -78,7 +79,7 @@ void tc_poll() {
 
   sum = 0;
   for (uint8_t i = 0; i < nAvg; i++)
-    sum += lastMeasurements[nAvg];
+    sum += lastMeasurements[i];
 
   cTemp = (sum / nAvg);
   return;

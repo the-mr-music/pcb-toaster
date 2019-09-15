@@ -40,13 +40,10 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "oled.h"
-#include "pid.h"
-#include "thermocouple.h"
+#include "u8g2.h"
 
 /* USER CODE END Includes */
 
@@ -72,20 +69,6 @@ SPI_HandleTypeDef hspi1;
 
 TIM_HandleTypeDef htim4;
 
-UART_HandleTypeDef huart1;
-
-osThreadId defaultTaskHandle;
-uint32_t defaultTaskBuffer[ 128 ];
-osStaticThreadDef_t defaultTaskControlBlock;
-osThreadId pidTaskHandle;
-uint32_t pidTaskBuffer[ 128 ];
-osStaticThreadDef_t pidTaskControlBlock;
-osThreadId tcTaskHandle;
-uint32_t tcTaskBuffer[ 128 ];
-osStaticThreadDef_t tcTaskControlBlock;
-osThreadId controlTaskHandle;
-uint32_t controlTaskBuffer[ 128 ];
-osStaticThreadDef_t controlTaskControlBlock;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -95,24 +78,114 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_ADC1_Init(void);
-static void MX_USART1_UART_Init(void);
 static void MX_TIM4_Init(void);
-void StartDefaultTask(void const * argument);
-void StartPidTask(void const * argument);
-void startTcTask(void const * argument);
-extern void StartControlTask(void const * argument);
-
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-  void vTaskLedRed(void *p) {
-    for (;;) {
-    }
-  }
 
+uint8_t u8x8_stm32_gpio_and_delay_cb(U8X8_UNUSED u8x8_t *u8x8,
+    U8X8_UNUSED uint8_t msg, U8X8_UNUSED uint8_t arg_int,
+    U8X8_UNUSED void *arg_ptr)
+{
+  switch (msg)
+  {
+  case U8X8_MSG_GPIO_AND_DELAY_INIT:
+    HAL_Delay(1);
+    break;
+  case U8X8_MSG_DELAY_MILLI:
+    HAL_Delay(arg_int);
+    break;
+  case U8X8_MSG_GPIO_DC:
+    HAL_GPIO_WritePin(OLED_DC_GPIO_Port, OLED_DC_Pin, arg_int);
+    break;
+  case U8X8_MSG_GPIO_RESET:
+    HAL_GPIO_WritePin(OLED_RESET_GPIO_Port, OLED_RESET_Pin, arg_int);
+    break;
+  }
+  return 1;
+}
+
+uint8_t u8x8_byte_4wire_hw_spi(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
+{
+  switch (msg)
+  {
+  case U8X8_MSG_BYTE_SEND:
+//    HAL_SPI_Transmit(&hspi1, (uint8_t *) arg_ptr, arg_int, 10000);
+    HAL_SPI_Transmit(&hspi1, (uint8_t *) arg_ptr, arg_int, HAL_MAX_DELAY);
+    break;
+  case U8X8_MSG_BYTE_INIT:
+    break;
+  case U8X8_MSG_BYTE_SET_DC:
+    HAL_GPIO_WritePin(OLED_DC_GPIO_Port, OLED_DC_Pin, arg_int);
+    break;
+  case U8X8_MSG_BYTE_START_TRANSFER:
+    HAL_GPIO_WritePin(OLED_CS_GPIO_Port, OLED_CS_Pin, GPIO_PIN_RESET);
+    break;
+  case U8X8_MSG_BYTE_END_TRANSFER:
+    HAL_GPIO_WritePin(OLED_CS_GPIO_Port, OLED_CS_Pin, GPIO_PIN_SET);
+    break;
+  default:
+    return 0;
+  }
+  return 1;
+}
+
+
+static u8g2_t u8g2;
+
+/*uint8_t u8x8_byte_4wire_hw_spi(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, void *arg_ptr)
+{
+  uint8_t byte;
+  uint8_t *data;
+ 
+  switch(msg)
+  {
+    case U8X8_MSG_BYTE_SEND:
+      data = (uint8_t *)arg_ptr;
+      while( arg_int > 0 )
+      {
+        byte = *data;
+        data++;
+        arg_int--;
+        HAL_SPI_Transmit(&hspi1, &byte, 1, 100);
+      }
+      break;
+    case U8X8_MSG_BYTE_START_TRANSFER:
+      HAL_GPIO_WritePin(OLED_CS_GPIO_Port, OLED_CS_Pin, GPIO_PIN_SET);
+      //__nop(); // 21 ns
+      break;
+    case U8X8_MSG_BYTE_END_TRANSFER:
+      //__nop(); // 21 ns
+      HAL_GPIO_WritePin(OLED_CS_GPIO_Port, OLED_CS_Pin, GPIO_PIN_RESET);
+      break;
+    default:
+      return 0;
+  }
+  return 1;
+}
+
+uint8_t u8x8_stm32_gpio_and_delay_cb(U8X8_UNUSED u8x8_t *u8x8, U8X8_UNUSED uint8_t msg,U8X8_UNUSED uint8_t arg_int, U8X8_UNUSED void *arg_ptr)
+{
+  return 1; // command processed successfully.
+}
+
+void draw(u8g2_t *u8g2)
+{
+  u8g2_ClearBuffer(u8g2);
+
+  u8g2_SetFontMode(u8g2, 1);
+  u8g2_SetFontDirection(u8g2, 0);
+  u8g2_SetFont(u8g2, u8g_font_6x10);
+
+  //sprintf(string_1, "LCD refresh: %d ms", lcd_refresh_time);
+  u8g2_DrawStr(u8g2, 2, 10, "hello");
+
+  u8g2_SendBuffer(u8g2);
+}
+*/
 /* USER CODE END 0 */
 
 /**
@@ -122,8 +195,6 @@ extern void StartControlTask(void const * argument);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-  task_pid_status    = TASK_WAIT;
-  task_pid_remaining = TASK_PID_INTERVAL;
 
   /* USER CODE END 1 */
 
@@ -147,101 +218,55 @@ int main(void)
   MX_GPIO_Init();
   MX_SPI1_Init();
   MX_ADC1_Init();
-  MX_USART1_UART_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
+  //HAL_GPIO_WritePin(GPIOB, LED3_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(OLED_CS_GPIO_Port, OLED_CS_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(TC_CS_GPIO_Port, TC_CS_Pin, GPIO_PIN_SET);
-  oled_init();
-  tc_init();
 
-  //HAL_GPIO_WritePin(GPIOB, LED3_Pin, GPIO_PIN_SET);
   //HAL_GPIO_WritePin(GPIOB, LED2_Pin, GPIO_PIN_SET);
   //HAL_GPIO_WritePin(GPIOB, LED1_Pin, GPIO_PIN_SET);
  
+  //u8g2_Setup_ssd1306_128x64_noname_1(&u8g2, U8G2_R0, u8x8_byte_4wire_hw_spi,
+  //                                      u8x8_stm32_gpio_and_delay_cb);
 
+  u8g2_Setup_ssd1306_128x64_noname_f(&u8g2, U8G2_R2, u8x8_byte_4wire_hw_spi,
+                                      u8x8_stm32_gpio_and_delay_cb);
+  u8g2_InitDisplay(&u8g2);
+  u8g2_SetPowerSave(&u8g2, 0);
+
+  volatile uint8_t temp[2];
+  char buf[8];
   /* USER CODE END 2 */
-
-  /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
-  /* USER CODE END RTOS_MUTEX */
-
-  /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
-  /* USER CODE END RTOS_SEMAPHORES */
-
-  /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
-  /* USER CODE END RTOS_TIMERS */
-
-  /* Create the thread(s) */
-  /* definition and creation of defaultTask */
-  osThreadStaticDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128, defaultTaskBuffer, &defaultTaskControlBlock);
-  defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
-
-  /* definition and creation of pidTask */
-  osThreadStaticDef(pidTask, StartPidTask, osPriorityAboveNormal, 0, 128, pidTaskBuffer, &pidTaskControlBlock);
-  pidTaskHandle = osThreadCreate(osThread(pidTask), NULL);
-
-  /* definition and creation of tcTask */
-  osThreadStaticDef(tcTask, startTcTask, osPriorityNormal, 0, 128, tcTaskBuffer, &tcTaskControlBlock);
-  tcTaskHandle = osThreadCreate(osThread(tcTask), NULL);
-
-  /* definition and creation of controlTask */
-  osThreadStaticDef(controlTask, StartControlTask, osPriorityNormal, 0, 128, controlTaskBuffer, &controlTaskControlBlock);
-  controlTaskHandle = osThreadCreate(osThread(controlTask), NULL);
-
-  /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
-  /* USER CODE END RTOS_THREADS */
-
-  /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
-  /* USER CODE END RTOS_QUEUES */
- 
-
-  /* Start scheduler */
-  osKernelStart();
-  
-  /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
 
-/*
-    if (task_pid_status == TASK_RUN) {
-      task_pid_status = TASK_WAIT;
-      HAL_GPIO_WritePin(GPIOB, LED3_Pin, GPIO_PIN_SET);
-      HAL_Delay(100);
-      HAL_GPIO_WritePin(GPIOB, LED3_Pin, GPIO_PIN_RESET);
-    }
 
-    //HAL_GPIO_WritePin(GPIOB, IRON_CTL_Pin, GPIO_PIN_SET);
-    //HAL_GPIO_WritePin(GPIOB, IRON_CTL_Pin, GPIO_PIN_RESET);
+    HAL_GPIO_WritePin(GPIOB, IRON_CTL_Pin, GPIO_PIN_SET);
+    HAL_Delay(500);
+    HAL_GPIO_WritePin(GPIOB, IRON_CTL_Pin, GPIO_PIN_RESET);
+    HAL_Delay(500);
 
-    ctime = HAL_GetTick();
-    buf[0] = ctime >> 24;
-    buf[1] = ctime >> 16;
-    buf[2] = ctime >> 8;
-    buf[3] = ctime;
-    buf[4] = t16 >> 8;
-    buf[5] = t16;
-    buf[6] = '\n';
+    HAL_GPIO_WritePin(TC_CS_GPIO_Port, TC_CS_Pin, GPIO_PIN_RESET);
+    HAL_SPI_Receive(&hspi1, &temp, 2, HAL_MAX_DELAY);
+    HAL_GPIO_WritePin(TC_CS_GPIO_Port, TC_CS_Pin, GPIO_PIN_SET);
 
-    HAL_UART_Transmit_IT( &huart1, &buf, 7);
+    uint16_t t16 = temp[0] << 8 | temp[1];
+    t16 = (t16 >> 3) * 250;
 
     utoa(t16, &buf, 10);
     u8g2_ClearBuffer(&u8g2);
     u8g2_SetFont(&u8g2, u8g2_font_ncenB14_tr);
+    //u8g2_DrawStr(&u8g2, 0, 15, "Hello World!");
     u8g2_DrawStr(&u8g2, 0, 15, buf);
     //u8g2_DrawCircle(&u8g2, 64, 40, 10, U8G2_DRAW_ALL);
     u8g2_SendBuffer(&u8g2);
 
     //draw(&u8g2);
 
-*/
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -361,7 +386,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -390,15 +415,14 @@ static void MX_TIM4_Init(void)
 
   TIM_ClockConfigTypeDef sClockSourceConfig = {0};
   TIM_MasterConfigTypeDef sMasterConfig = {0};
-  TIM_OC_InitTypeDef sConfigOC = {0};
 
   /* USER CODE BEGIN TIM4_Init 1 */
 
   /* USER CODE END TIM4_Init 1 */
   htim4.Instance = TIM4;
-  htim4.Init.Prescaler = 7999;
+  htim4.Init.Prescaler = 0;
   htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim4.Init.Period = 7999;
+  htim4.Init.Period = 0;
   htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim4) != HAL_OK)
@@ -410,61 +434,15 @@ static void MX_TIM4_Init(void)
   {
     Error_Handler();
   }
-  if (HAL_TIM_PWM_Init(&htim4) != HAL_OK)
-  {
-    Error_Handler();
-  }
   sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
   sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
   if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
   {
     Error_Handler();
   }
-  sConfigOC.OCMode = TIM_OCMODE_PWM1;
-  sConfigOC.Pulse = 4000;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  if (HAL_TIM_PWM_ConfigChannel(&htim4, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
-  {
-    Error_Handler();
-  }
   /* USER CODE BEGIN TIM4_Init 2 */
 
   /* USER CODE END TIM4_Init 2 */
-  HAL_TIM_MspPostInit(&htim4);
-
-}
-
-/**
-  * @brief USART1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_USART1_UART_Init(void)
-{
-
-  /* USER CODE BEGIN USART1_Init 0 */
-
-  /* USER CODE END USART1_Init 0 */
-
-  /* USER CODE BEGIN USART1_Init 1 */
-
-  /* USER CODE END USART1_Init 1 */
-  huart1.Instance = USART1;
-  huart1.Init.BaudRate = 115200;
-  huart1.Init.WordLength = UART_WORDLENGTH_8B;
-  huart1.Init.StopBits = UART_STOPBITS_1;
-  huart1.Init.Parity = UART_PARITY_NONE;
-  huart1.Init.Mode = UART_MODE_TX_RX;
-  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
-  if (HAL_UART_Init(&huart1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN USART1_Init 2 */
-
-  /* USER CODE END USART1_Init 2 */
 
 }
 
@@ -486,7 +464,7 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOA, OLED_DC_Pin|OLED_RESET_Pin|OLED_CS_Pin|TC_CS_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, LED1_Pin|LED2_Pin|LED3_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, LED1_Pin|LED2_Pin|LED3_Pin|IRON_CTL_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : OLED_DC_Pin OLED_RESET_Pin OLED_CS_Pin TC_CS_Pin */
   GPIO_InitStruct.Pin = OLED_DC_Pin|OLED_RESET_Pin|OLED_CS_Pin|TC_CS_Pin;
@@ -501,8 +479,20 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(BTN_START_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : LED1_Pin LED2_Pin LED3_Pin */
-  GPIO_InitStruct.Pin = LED1_Pin|LED2_Pin|LED3_Pin;
+  /*Configure GPIO pin : PA9 */
+  GPIO_InitStruct.Pin = GPIO_PIN_9;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PA10 */
+  GPIO_InitStruct.Pin = GPIO_PIN_10;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : LED1_Pin LED2_Pin LED3_Pin IRON_CTL_Pin */
+  GPIO_InitStruct.Pin = LED1_Pin|LED2_Pin|LED3_Pin|IRON_CTL_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -513,158 +503,6 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 
 /* USER CODE END 4 */
-
-/* USER CODE BEGIN Header_StartDefaultTask */
-/**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used 
-  * @retval None
-  */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void const * argument)
-{
-
-  /* USER CODE BEGIN 5 */
-   TickType_t xLastWakeTime;
-   const TickType_t xFrequency = 100;
-   // Initialise the xLastWakeTime variable with the current time.
-   xLastWakeTime = xTaskGetTickCount();
-
-  /* Infinite loop */
-  for(;;)
-  {
-      osDelay(1);
-      /*
-      uint8_t cbuf[8];
-      char displaybuf[24];
-      uint16_t temp = tc_getAverageTemperature();
-      uint32_t ctime = HAL_GetTick();
-      cbuf[0] = (ctime >> 24) & 0xFF;
-      cbuf[1] = (ctime >> 16) & 0xFF;
-      cbuf[2] = (ctime >> 8) & 0xFF;
-      cbuf[3] = (ctime & 0xFF);
-      uint8_t t_msb = temp >> 8;
-      cbuf[4] = t_msb & 0xFF; //(char) (temp >> 8) & 0xFF;
-      cbuf[5] = temp & 0xFF;
-      cbuf[6] = pid_getCurOutputPower() & 0xFF;
-      cbuf[7] = '\n';
-
-      HAL_UART_Transmit(&huart1, &cbuf, 8, HAL_MAX_DELAY);
-
-      u8g2_ClearBuffer(&u8g2);
-      u8g2_SetFont(&u8g2, u8g2_font_helvB10_tr);
-
-      uint16_t fracTemp = temp;
-      temp /= 100;
-      fracTemp -= temp * 100;
-      sprintf(displaybuf, "%d.%d C - %d %%", temp, fracTemp, pid_getCurOutputPower());
-      u8g2_DrawStr(&u8g2, 0, 64, displaybuf);
-
-      uint32_t aval = 0;
-
-      HAL_ADC_Start(&hadc1);
-      if (HAL_ADC_PollForConversion(&hadc1, 1000000) == HAL_OK) {
-        aval = HAL_ADC_GetValue(&hadc1);
-      }
-
-      if (aval > 2000 && pid_getStatus() == 0)
-          pid_enable();
-
-      if (aval < 1000 && pid_getStatus() == 1)
-          pid_disable();
-
-      sprintf(displaybuf, "%d", aval);
-      u8g2_DrawStr(&u8g2, 0, 32, displaybuf);
-
-      if (pid_getStatus() == 0)
-        u8g2_DrawStr(&u8g2, 40, 15, "PID off");
-      else
-        u8g2_DrawStr(&u8g2, 40, 15, "PID on");
-
-
-      u8g2_SendBuffer(&u8g2);
-
-      vTaskDelayUntil( &xLastWakeTime, xFrequency );
-*/
-      //osDelay(1000);
-  }
-  /* USER CODE END 5 */ 
-}
-
-/* USER CODE BEGIN Header_StartPidTask */
-/**
-* @brief Function implementing the pidTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_StartPidTask */
-void StartPidTask(void const * argument)
-{
-  /* USER CODE BEGIN StartPidTask */
-   TickType_t xLastWakeTime;
-   const TickType_t xFrequency = 100;
-   // Initialise the xLastWakeTime variable with the current time.
-   xLastWakeTime = xTaskGetTickCount();
-
-   pid_init();
-   __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_2, 0);
-   HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
-
-  /* Infinite loop */
-  for(;;)
-  {
-      uint16_t power = pid_calculate();
-      power *= 80;
-      __HAL_TIM_SET_COMPARE(&htim4, TIM_CHANNEL_2, power);
-      vTaskDelayUntil(&xLastWakeTime, xFrequency);
-  }
-  /* USER CODE END StartPidTask */
-}
-
-/* USER CODE BEGIN Header_startTcTask */
-/**
-* @brief Function implementing the tcTask thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_startTcTask */
-void startTcTask(void const * argument)
-{
-  /* USER CODE BEGIN startTcTask */
-  TickType_t xLastWakeTime;
-  const TickType_t xFrequency = 25;
-  // Initialise the xLastWakeTime variable with the current time.
-  xLastWakeTime = xTaskGetTickCount();
-
-  /* Infinite loop */
-  for(;;)
-  {
-    tc_poll();
-    vTaskDelayUntil(&xLastWakeTime, xFrequency);
-  }
-  /* USER CODE END startTcTask */
-}
-
-/**
-  * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM1 interrupt took place, inside
-  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
-  * a global variable "uwTick" used as application time base.
-  * @param  htim : TIM handle
-  * @retval None
-  */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  /* USER CODE BEGIN Callback 0 */
-
-  /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM1) {
-    HAL_IncTick();
-  }
-  /* USER CODE BEGIN Callback 1 */
-
-  /* USER CODE END Callback 1 */
-}
 
 /**
   * @brief  This function is executed in case of error occurrence.
