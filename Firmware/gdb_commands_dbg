@@ -1,0 +1,10 @@
+target remote localhost:3333
+monitor reset halt
+load
+#break main.c:556
+#break pid.c:61
+#break tc_init
+#break tc_poll
+#break pid_calculate
+break control.c:121
+continue
