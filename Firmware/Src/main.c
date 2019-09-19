@@ -198,50 +198,16 @@ int main(void)
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
- 
 
   /* Start scheduler */
   osKernelStart();
-  
+
   /* We should never get here as control is now taken by the scheduler */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-
-/*
-    if (task_pid_status == TASK_RUN) {
-      task_pid_status = TASK_WAIT;
-      HAL_GPIO_WritePin(GPIOB, LED3_Pin, GPIO_PIN_SET);
-      HAL_Delay(100);
-      HAL_GPIO_WritePin(GPIOB, LED3_Pin, GPIO_PIN_RESET);
-    }
-
-    //HAL_GPIO_WritePin(GPIOB, IRON_CTL_Pin, GPIO_PIN_SET);
-    //HAL_GPIO_WritePin(GPIOB, IRON_CTL_Pin, GPIO_PIN_RESET);
-
-    ctime = HAL_GetTick();
-    buf[0] = ctime >> 24;
-    buf[1] = ctime >> 16;
-    buf[2] = ctime >> 8;
-    buf[3] = ctime;
-    buf[4] = t16 >> 8;
-    buf[5] = t16;
-    buf[6] = '\n';
-
-    HAL_UART_Transmit_IT( &huart1, &buf, 7);
-
-    utoa(t16, &buf, 10);
-    u8g2_ClearBuffer(&u8g2);
-    u8g2_SetFont(&u8g2, u8g2_font_ncenB14_tr);
-    u8g2_DrawStr(&u8g2, 0, 15, buf);
-    //u8g2_DrawCircle(&u8g2, 64, 40, 10, U8G2_DRAW_ALL);
-    u8g2_SendBuffer(&u8g2);
-
-    //draw(&u8g2);
-
-*/
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -533,7 +499,7 @@ void StartDefaultTask(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-      osDelay(1);
+      osDelay(100);
       /*
       uint8_t cbuf[8];
       char displaybuf[24];

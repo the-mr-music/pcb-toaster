@@ -118,9 +118,9 @@ void StartControlTask(void const * argument) {
 
                 // If needed adjust PID
                 if ( (sTime % 10) == 0 ) {
-                    uint8_t cSec = sTime / 10;
+                    uint16_t cSec = sTime / 10;
                     // If there is a temperature for the current time apply it
-                    if ( cSec < tempProfileLen ) {
+                    if ( cSec < (sizeof(tempProfile) / sizeof(tempProfile[0])) ) {
                         pid_setTargetTemperature(tempProfile[cSec]);
                     } else {
                         pid_disable();

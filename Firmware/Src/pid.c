@@ -71,9 +71,9 @@ void pid_init() {
     prevTemp = cur_ironTemperature;
     prevTemp /= 10;
     // Not ki_acc = output, maybe if necessary
-    kp = 10000;
-    ki = 10;
-    kd = 0; //10000;
+    kp = 4270;
+    ki = 100;
+    kd = 35400; //10000;
 
     ki_acc = 0;
     targetTemp = 1500;
