@@ -19,11 +19,14 @@ This current project is still work in progress. Be sure to check back later when
 - [x] Do all the calculations on the power side
 - [x] Component selection
 - [x] Design and order the PCB
-- [ ] Build and test the PCB
+- [x] Build and test the PCB
 - [x] Plan the case and mounting, get materials
 - [x] Take a nap
-- [ ] Build and wire everything
-- [ ] Program the firmware (curious if PID regulator will be necessary or a plain two-point regulator is sufficient)
+- [x] PCBs arrive 
+- [x] Build and wire everything
+- [x] Read up theoretical information about reflow soldering and solder paste
+- [x] Program a first firmware version (curious if PID regulator will be necessary or a plain two-point regulator is sufficient)
+- [ ] Refine the firmware
 
 ## PCB Design Notes
 
@@ -56,8 +59,7 @@ For starting or interrupting the heating process the button is used. One can fit
 
 To give the user feedback, a small 128x64 px OLED (displays the current temperature, soldering time, etc...) is connected to the STM32 over SPI. Because there were a few spare I/Os left on the controller, I added three more LEDs that can be turned on or off by the firmware.
 
-
-#### PCB Renders
+### PCB Renders
 
 The PCB renders have been created using Greg Davill's KiCAD Script. Order was placed at JLCPCB as I still had other PCBs to be made. First image is the top, second the bot view.
 
@@ -65,17 +67,48 @@ The PCB renders have been created using Greg Davill's KiCAD Script. Order was pl
 
 <img src="Hardware_Rev1_Docs/hotplate_ctl-back.png" align="middle" width="70%"/>
 
-### PCB Assembly
+## Simulation
 
-> Coming soon
+After the PCB has been sent to the fab, I was curious which performance to expect and decided to coarsely model the hot plate in python.
+Even though the script is a bit chaotic and is using really coarse values, the result is surprisingly accurate. Those who are interested and have numpy and matplotlib installed can have a look at the Simulation folder.
+
+<img src="Firmware/Docs/img/calc_max_heat_slope.png" align="middle" />
+
+### PCB Assembly
+The soldering itself went quickly, however I can not really recommend the 0402 resistor networks without a stencil. As the components came from LCSC and these were missing in KiCAD, I drew the footprints of the potentiometer, PSU, fuse holders, as well as the OLED and everything fit like a charm.
 
 ## Mounting
+In order to prevent the terminals from being touched, an acrylic glass will be mounted on top of it. Two cutouts for the potentiometer and button are made.
 
-> Coming soon
+The plate itself get really hot and should neither damage the base plate (in case of wood) or steal the heat (in case of metal). As solution it is mounted on a piece of FR4, which is in turn screwed to the base plate.
+
+However I still have not decided if I will make the case out of wood or metal. Until the device is fully finished, the PCB is in a plastic box to prevent touching from the bottom and the Iron is mounted on a wooden plate.
 
 ## Firmware
+With the hardware done, up to the firmware. 
 
-> Coming soon
+### Libraries used
+For easier scheduling and extensibility I chose to deploy a freeRTOS on the device in conjunction with the STM32 HAL libraries. Then the really good u8g2 library by Oli Kraus for controlling the OLED and finally an own implementation of Brett Beauregard's well working PID controller.
+
+### Iron Power Control
+
+Wave packet control. Prescaler of 8000 @ 64 MHz core clock. Timer in PWM mode with 8000 period -> 1 second. One half wave is 10 ms. error is x
+
+Simulation results show a maximum temperature increase per second of around 2,5 °C. This is below the allowed 3 °C increase per second. When heating the iron with maximum power, it is
+
+As the power of the plate is not high enough support the accurate temperature profile, I will try to take a different approach. At first preheat with maximum heat to 100 °C, at which point the flux starts activating. After the flux is active, the whole soldering process should be completed in three minutes. A PID regulator will then take care of regulating it to the peak temperature.
+
+### Tasks
+The first task deals with reading out and preprocessing the thermocouple temperature. The MAX6675 in worst case needs 225ms for one conversion. With SPI at 4 MHz one can achieve four temperature readings in one second. If the value passes the sanity check, it is added to a ringbuffer. This way always the last four temperature readings get averaged providing a stable temperature reading once per second, matching our PID regulator's calculation interval.
+
+The second task is 
+
+control task. Oled, logging and 
+
+pid task. PID regulator based on brett beauregards code.
+
+
+Currently only one temperature curve is programmed for the Chipquik TS391AX50 (Sn63/PB37, TAL@183 °C). The potentiometer is 
 
 
 <p>&copy; T. Music 2019<br/>This work is licensed under CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/legalcode)</p>
